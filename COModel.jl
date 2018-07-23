@@ -33,4 +33,8 @@ function loss(m::Model{CO}, events, points)
     end
 end
 
+function train(file, model::Model{CO}, events, points; load=true)
+    model = !load && ModelMod.load
+end
+
 end # module COModel

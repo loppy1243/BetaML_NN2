@@ -1,6 +1,7 @@
 @reexport module CellPredLayer
 export CellPred
 
+using Flux
 using ..ConcatLayer
 
 cellpred(dists) = mapslices(dists, 1:2) do dist

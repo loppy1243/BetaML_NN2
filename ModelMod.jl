@@ -2,6 +2,7 @@ module ModelMod
 export Model, ModelType, predict, loss
 
 import Flux
+import JLD2
 
 using Reexport: @reexport
 using Flux.Tracker: istracked, data
@@ -9,12 +10,15 @@ using Flux.Tracker: istracked, data
 abstract type ModelType end
 
 struct Model{T<:ModelType, F}
+    name::String
     func::F
     hyparams::Dict{String}
 
-    Model{T, F}(func::F, hyparams::Dict) where {T<:ModelType, F} = new(func, hyparams)
-    Model{T, F}(func::F, hyparams...) where {T<:ModelType, F} = new(func, Dict(hyparams))
+    Model{T, F}(id, func::F, hyparams::Dict) where {T<:ModelType, F} = new(id, func, hyparams)
+    Model{T, F}(id, func::F, hyparams...) where {T<:ModelType, F} = new(id, func, Dict(hyparams))
 end
+
+modelname(m::Model) = m.name
 
 Flux.params(m::Model) = Flux.params(m.func)
 hyparams(m::Model) = m.hyparams
@@ -29,6 +33,25 @@ function predict(m::Model, args...)
 end
 
 loss(m::Model) = (args...,) -> loss(m, args...)
+
+function save(m::Model, file)
+    JLD2.jldopen(file, "a") do io
+        grp = JLD2.Group(io, modelname(m))
+        grp["params"] = Flux.params(m)
+
+        hyps = hyparams(m)
+        hyps_grp = JLD2.Group(grp, "hyparams")
+        for k in keys(hyps)
+            hyps_grp[k] = hyps[k]
+        end
+    end
+end
+
+# TODO
+function load(m::Model, file)
+    JLD2.jldopen(file, "r") do io
+    end
+end
 
 include("ModelMod/ModelMacro.jl")
 

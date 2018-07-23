@@ -113,8 +113,9 @@ macro model(expr::Expr)
             $(exprs...)
             func = $(esc(body))
             hyparams = Dict(zip(($hyparam_names...), ($(hyparam_syms...),)))
+            name = string(T)*"_"*string(hash(hyparams))
 
-            $(esc(:(ModelMod.Model))){$name, typeof(func)}(func, hyparams)
+            $(esc(:(ModelMod.Model))){$name, typeof(func)}(name, func, hyparams)
         end
 
         (m::$(esc(:(ModelMod.Model))){T})(args...) where T<:$name = m.func(args...)

@@ -1,6 +1,7 @@
 @reexport module PointPredLayer
+export PointPred
 
-import Flux
+using Flux
 
 using BetaML.Data
 using Flux.Tracker: data
