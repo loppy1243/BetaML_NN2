@@ -2,15 +2,19 @@ module COModel
 
 using Flux
 
+import ModelMod: loss, predict
+
 using BetaML_Data
 using ModelMod, Layers
 
 regularize(x) = reshape(x/MAX_E, GRIDSIZE, 1, :)
 
-@model CO(activ, N, ϵ, λ; cutgrad) =
-    Chain(regularize, CellLayer(), @Concat(identity..., PointLayer(activ, N)))
+@model CO(activ, N, ϵ, λ; cutgrad=false) =
+    Chain(regularize, CellPred(), @Concat(identity..., PointPred(activ, N, cutgrad=cutgrad)))
 
-function ModelMod.loss(m::Model{CO}, events, points)
+function loss(m::Model{CO}, events, points)
+    ϵ, λ = hyparams(m, "ϵ", "λ")
+
     goodlog(x) = -log(ϵ + max(0, x))
     badlog(x) = -log(1+ϵ - min(1, x))
 

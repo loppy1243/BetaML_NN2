@@ -1,4 +1,5 @@
 @reexport module ConcatLayer
+export @Concat
 
 import Flux
 

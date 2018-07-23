@@ -1,7 +1,10 @@
 @reexport module PointPredLayer
 
+import Flux
+
+using BetaML.Data
+using Flux.Tracker: data
 using Lazy: @>
-using ConcatLayer
 
 const NODES = prod(2(GRIDSIZE.-1).+1)
 const SCALE = (XYMAX - XYMIN)./2GRIDSIZE
@@ -9,13 +12,18 @@ const SCALE = (XYMAX - XYMIN)./2GRIDSIZE
 struct PointPred{T, F<:Function}
     denselayer::T
     activ::F
+    cutgrad::Bool
 end
-function PointPred(activ, N)
+function PointPred(activ, N; cutgrad=false)
     l = Chain(Dense(NODES, N, activ), Dense(N, 2))
 
-    PointPred{typeof(l), typeof(activ)}(l, activ)
+    PointPred{typeof(l), typeof(activ)}(l, activ, cutgrad)
 end
-(p::PointPred)(x) = @> x[1] begin
+
+Flux.params(p::PointPred) = Flux.params(p.denselayer)
+
+(p::PointPred)(x) = p.cutgrad ? _pointpred(p, data(x[1])) : _pointpred(p, x[x])
+_pointpred(p::PointPred, x) = @> x begin
     recenter(x[2])
     p.activ.()
     vec

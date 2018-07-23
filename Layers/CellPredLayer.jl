@@ -1,7 +1,7 @@
 @reexport module CellPredLayer
 export CellPred
 
-using ConcatLayer
+using ..ConcatLayer
 
 cellpred(dists) = mapslices(dists, 1:2) do dist
     ind2sub(dist, indmax(dist)) |> collect

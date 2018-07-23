@@ -1,10 +1,9 @@
 module Layers
 
 using Reexport: @reexport
-using Loppy.Util: includeall
 
-includeall("Layers")
-
-# Include all files in layers/ directory.
+include("Layers/ConcatLayer.jl")
+include("Layers/CellPredLayer.jl")
+include("Layers/PointPredLayer.jl")
 
 end # module Layers
