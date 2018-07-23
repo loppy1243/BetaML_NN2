@@ -2,7 +2,7 @@ module COModel
 
 using Flux
 
-import ModelMod: loss, predict
+import ..ModelMod: loss, predict
 
 using BetaML.Data
 using ..ModelMod, ..Layers
