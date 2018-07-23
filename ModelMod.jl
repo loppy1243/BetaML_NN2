@@ -1,6 +1,8 @@
 module ModelMod
 export Model, ModelType, predict, loss
 
+import Flux
+
 using Reexport: @reexport
 using Flux.Tracker: istracked, data
 using Loppy.Util: includeall

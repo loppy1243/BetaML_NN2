@@ -2,7 +2,7 @@
 export @model
 
 using Loppy.Util: fcat
-using ..Model, ..ModelType
+import ..ModelMod
 
 is_pair_expr(x::Expr) = x.head == :call && x.args[1] == :(=>)
 is_pair_expr(x) = false
@@ -65,11 +65,11 @@ param_ty(x::Expr) =
         :Any
     end
 
-getname(x::Symbol) = x
-getname(x::Expr) = x.head == :(<:) ? x.args[1] : x
+getname(x::Symbol) = esc(x)
+getname(x::Expr) = x.head == :(<:) ? esc(x.args[1]) : esc(x)
 
 getsupertype(x::Symbol) = :(ModelMod.ModelType)
-getsupertype(x::Expr) = x.head == :(<:) ? x.args[2] : :(ModelMod.Modeltype)
+getsupertype(x::Expr) = x.head == :(<:) ? esc(x.args[2]) : :(ModelMod.Modeltype)
 
 macro model(expr::Expr)
     @assert expr.head == :function || expr.head == :(=) && expr.args[1] isa Expr #=
@@ -92,8 +92,6 @@ macro model(expr::Expr)
     hyparam_pairs = [map(param_pairs, kwparams)                    ; map(param_pairs, hyparams)]
     hyparam_syms  = [map(param_sym,   kwparams)                    ; map(param_sym,   hyparams)]
     hyparam_names = [map(param_name,  kwparams)                    ; map(param_name,  hyparams)]
-    name_esc = esc(name)
-    sup_ty_exc = esc(sup_ty)
 
     hyparam_pairs = filter(x -> x != nothing, hyparam_pairs)
     pair_arg_syms = filter(x -> x.head == :(::), hyparam_escs) |> #=
@@ -109,21 +107,18 @@ macro model(expr::Expr)
         end
     end
 
-    model_ty_sym = esc(:(ModelMod.Model))
-
     quote
-        abstract type $name_esc <: $sup_ty_esc end
-        function $model_ty_sym{$name_esc}($(hyparam_escs...))
+        abstract type $name <: $sup_ty end
+        function ModelMod.Model{T}($(hyparam_escs...)) where T<:$name
             $(exprs...)
             func = $(esc(body))
-            hyparams = Dict(zip($hyparam_names, ($(hyparam_syms...),)))
+            hyparams = Dict(zip(($hyparam_names...), ($(hyparam_syms...),)))
 
-            $model_ty_sym{$name_esc, typeof(model)}(func, hyparams)
+            $(esc(:(ModelMod.Model))){$name, typeof(func)}(func, hyparams)
         end
 
-        (m::$model_ty_sym{$name_esc})(args...) = m.func(args...)
+        (m::$(esc(:(ModelMod.Model))){T})(args...) where T<:$name = m.func(args...)
     end
 end
-
 
 end # module ModelMacro
