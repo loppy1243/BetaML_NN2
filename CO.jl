@@ -3,7 +3,7 @@ module COModel
 using Flux
 
 using BetaML_Data
-using BetaML_NN: ModelMod, Layers
+using ModelMod, Layers
 
 regularize(x) = reshape(x/MAX_E, GRIDSIZE, 1, :)
 

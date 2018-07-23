@@ -1,9 +1,9 @@
 module Layers
 
 using Reexport: @reexport
-using BetaML_NN.Util: includeall
+using Loppy.Util: includeall
 
-includeall("layers")
+includeall("Layers")
 
 # Include all files in layers/ directory.
 

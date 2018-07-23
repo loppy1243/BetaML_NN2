@@ -26,6 +26,6 @@ end
 
 loss(m::Model) = (args...,) -> loss(m, args...)
 
-includeall("model")
+includeall("ModelMod")
 
 end # module ModelMod
