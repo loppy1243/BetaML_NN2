@@ -1,4 +1,5 @@
-module CellPredLayer
+@reexport module CellPredLayer
+export CellPred
 
 using ConcatLayer
 

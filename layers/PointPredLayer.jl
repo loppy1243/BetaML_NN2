@@ -1,4 +1,4 @@
-module PointPredLayer
+@reexport module PointPredLayer
 
 using Lazy: @>
 using ConcatLayer
@@ -6,16 +6,16 @@ using ConcatLayer
 const NODES = prod(2(GRIDSIZE.-1).+1)
 const SCALE = (XYMAX - XYMIN)./2GRIDSIZE
 
-struct PointLayer{T, F<:Function}
+struct PointPred{T, F<:Function}
     denselayer::T
     activ::F
 end
-function PointLayer(activ, N)
+function PointPred(activ, N)
     l = Chain(Dense(NODES, N, activ), Dense(N, 2))
 
-    PointLayer{typeof(l), typeof(activ)}(l, activ)
+    PointPred{typeof(l), typeof(activ)}(l, activ)
 end
-(p::PointLayer)(x) = @> x[1] begin
+(p::PointPred)(x) = @> x[1] begin
     recenter(x[2])
     p.activ.()
     vec
