@@ -4,8 +4,8 @@ using Flux
 
 import ModelMod: loss, predict
 
-using BetaML_Data
-using ModelMod, Layers
+using BetaML.Data
+using ..ModelMod, ..Layers
 
 regularize(x) = reshape(x/MAX_E, GRIDSIZE, 1, :)
 
