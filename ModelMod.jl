@@ -1,8 +1,10 @@
 @reexport module ModelMod
-export Model, ModelType, predict, loss, train, save, load
+export Model, ModelType, params, hyparams, modeltype, modelname, modelid, predict, loss,
+       train, save, load!
 
 import Flux
 import JLD2
+import Flux: params
 
 using Reexport: @reexport
 using Flux.Tracker: istracked, data
@@ -22,13 +24,17 @@ struct Model{T<:ModelType, F}
 end
 (m::Model)(args...) = m.func(args...)
 
+Base.:(==)(m1::Model{T}, m2::Model{T}) where T = modelid(m1) == modelid(m2)
+Base.:(==)(m1::Model{T1}, m2::Model{T2}) where {T1, T2} = false
+
 struct PlaceholderName; val::String end
 struct Placeholder{T}
     name::PlaceholderName
     val::T
 end
 Placeholder(name, x) = Placeholder{typeof(x)}(PlaceholderName(name), x)
-hash(x::Placeholder, h) = hash(x.name, h)
+Base.hash(x::Placeholder, h::UInt) = Base.hash(x.name, h)
+Base.hash(x::PlaceholderName, h::UInt) = Base.hash(x.val, h)
 
 modelname(m::Model{T}) where T<:ModelType = string(T)
 modelid(m::Model) = m.id
@@ -53,30 +59,44 @@ loss(m::Model) = (args...,) -> loss(m, args...)
 
 train(args...) = throw(MethodError(train, (args...)))
 
-save(m::Model, file) = JLD2.jldopen(file, "a") do io
+save(file, m::Model) = JLD2.jldopen(file, "a") do io
     mname = modelname(m)
     grp = JLD2.Group(haskey(io, mname) ? io[mname] : JLD2.Group(io, mname),
                      string(modelid(m)))
-    grp["params"] = data(m.params)
+    grp["params"] = map(data, m.params)
     grp["hyparams"] = map(m.hyparams) do x
         x[1] => (x[2] isa Placeholder ? x[2].name : x[2])
     end
 end
 
-load!(m::Model, file) = JLD2.jldopen(file, "r") do io
-    grp = io[modelname(m)][string(modelid(m))]
+load!(file, m::Model, reps::Vararg{<:Pair{String, <:Any}}) = load!(file, m, Dict(reps))
+function load!(file, m::Model, replace=Dict{String, Any}(); id=modelid(m))
+    id = convert(UInt, id)
+    replace = convert(Dict{String, Any}, replace)
+    
+    JLD2.jldopen(file, "r") do io
+        grp = io[modelname(m)][string(id)]
 
-    for (p, p_dat) in zip(m.params, grp["params"])
-        p.tracker.data = p_dat
-    end
+        for (p, p_dat) in zip(m.params, grp["params"])
+            p.tracker.data = p_dat
+        end
 
-    for (k, v) in grp["hyparams"]
-        v isa Placeholder && continue
-        m.hyparams[k] = v
+        for (k, v) in grp["hyparams"]
+            @assert haskey(m.hyparams, k)
+            if v isa PlaceholderName
+                !haskey(replace, v.val) && error("No entry in replace[] for \"$(v.val)\"")
+                m.hyparams[k] = Placeholder(v, replace[v.val])
+            else
+                m.hyparams[k] = v
+            end
+        end
     end
 
     m
 end
+
+#cache(file, m::Model, data) = JLD2.jldopen(file, "r") do io
+#end
 
 include("ModelMod/ModelMacro.jl")
 
