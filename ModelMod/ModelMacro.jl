@@ -1,8 +1,10 @@
 @reexport module ModelMacro
 export @model
 
-using Loppy.Util: fcat
+import Flux
 import ..ModelMod
+
+using Loppy.Util: fcat
 
 is_pair_expr(x::Expr) = x.head == :call && x.args[1] == :(=>)
 is_pair_expr(x) = false
@@ -16,9 +18,8 @@ is_param_expr(x) = false
 param_sym(x::Symbol) = esc(x)
 param_sym(x::Expr) = 
     if is_pair_expr(x)
-        param_sym(x.args[2])
-    elseif is_kw_expr(x)
-        param_sym(x.args[1])
+        :(ModelMod.Placeholder(ModelMod.PlaceholderName($(param_sym(x.args[3]))),
+                               $(param_sym(x.args[2]))))
     else
         param_sym(x.args[1])
     end
@@ -26,10 +27,7 @@ param_sym(x::Expr) =
 param_name(x::Symbol) = string(x)
 param_name(x::Expr) =
     if is_pair_expr(x)
-        # This is NOT a typo!
-        param_sym(x.args[3])
-    elseif is_kw_expr(x)
-        param_name(x.args[1])
+        param_name(x.args[2])
     else
         param_name(x.args[1])
     end
@@ -55,14 +53,14 @@ param_pairs(x::Expr) =
 is_ty_expr(x::Symbol) = false
 is_ty_expr(x::Expr) = x.head == :(::)
 
-param_ty(x::Symbol) = :Any
+param_ty(x::Symbol) = :(<:Any)
 param_ty(x::Expr) =
     if is_kw_expr(x)
         param_ty(x.args[1])
     elseif is_ty_expr(x)
         esc(x.args[2])
     else
-        :Any
+        :(<:Any)
     end
 
 getname(x::Symbol) = esc(x)
@@ -80,9 +78,11 @@ macro model(expr::Expr)
     body = expr.args[2]
 
     kwparams = if is_param_expr(hyparams[1])
-        @assert all(is_kw_expr, hyparams[1].args)
         x = hyparams[1].args
+        @assert all(is_kw_expr, x)
+
         hyparams = hyparams[2:end]
+
         x
     else
         []
@@ -109,16 +109,17 @@ macro model(expr::Expr)
 
     quote
         abstract type $name <: $sup_ty end
-        function ModelMod.Model{T}($(hyparam_escs...)) where T<:$name
+
+        function (::Base.Type{T})($(hyparam_escs[2:end]...); id::Union{Integer, Void}=nothing,
+                                  $(hyparam_escs[1].args...)) where T<:$name
             $(exprs...)
             func = $(esc(body))
+            params = Flux.params(func)
             hyparams = Dict(zip(($hyparam_names...), ($(hyparam_syms...),)))
-            name = string(T)*"_"*string(hash(hyparams))
+            real_id = id === nothing ? hash((T, hyparams)) : convert(UInt, id)
 
-            $(esc(:(ModelMod.Model))){$name, typeof(func)}(name, func, hyparams)
+            ModelMod.Model{$name, typeof(func)}(real_id, func, params, hyparams)
         end
-
-        (m::$(esc(:(ModelMod.Model))){T})(args...) where T<:$name = m.func(args...)
     end
 end
 

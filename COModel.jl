@@ -1,18 +1,19 @@
-module COModel
+@reexport module COModel
+export CO
 
 using Flux
 
-import ..ModelMod: loss, predict
+import ..ModelMod: loss, predict, train
 
 using BetaML.Data
 using ..ModelMod, ..Layers
 
 regularize(x) = reshape(x/MAX_E, GRIDSIZE, 1, :)
 
-@model CO(activ, N, ϵ, λ; cutgrad=false) =
+@model CO(activ=>activ_name, N, ϵ, λ; cutgrad=false) =
     Chain(regularize, CellPred(), @Concat(identity..., PointPred(activ, N, cutgrad=cutgrad)))
 
-function loss(m::Model{CO}, events, points)
+function loss(m::Model{<:CO}, events, points)
     ϵ, λ = hyparams(m, "ϵ", "λ")
 
     goodlog(x) = -log(ϵ + max(0, x))
@@ -33,8 +34,8 @@ function loss(m::Model{CO}, events, points)
     end
 end
 
-function train(file, model::Model{CO}, events, points; load=true)
-    model = !load && ModelMod.load
+function ModelMod.train(model::Model{<:CO}, file, events, points; load=true)
+    model = !load && ModelMod.load(model, file)
 end
 
 end # module COModel
