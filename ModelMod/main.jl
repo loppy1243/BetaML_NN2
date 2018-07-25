@@ -88,7 +88,7 @@ function load!(file, m::Model, replace=Dict{String, Any}(); id=modelid(m))
                     m.hyparams[k] = Placeholder(v, replace[v.val])
                 catch ex
                     if ex isa KeyError
-                        println("ERROR: No replacement entry for key \"$(v.val)\"")
+                        println(STDERR, "ERROR: No replacement entry for key \"$(v.val)\"")
                     end
                     rethrow()
                 end
