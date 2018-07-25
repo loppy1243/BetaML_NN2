@@ -84,8 +84,14 @@ function load!(file, m::Model, replace=Dict{String, Any}(); id=modelid(m))
         for (k, v) in grp["hyparams"]
             @assert haskey(m.hyparams, k)
             if v isa PlaceholderName
-                !haskey(replace, v.val) && error("No entry in replace[] for \"$(v.val)\"")
-                m.hyparams[k] = Placeholder(v, replace[v.val])
+                try
+                    m.hyparams[k] = Placeholder(v, replace[v.val])
+                catch ex
+                    if ex isa KeyError
+                        println("ERROR: No replacement entry for key \"$(v.val)\"")
+                    end
+                    rethrow()
+                end
             else
                 m.hyparams[k] = v
             end
