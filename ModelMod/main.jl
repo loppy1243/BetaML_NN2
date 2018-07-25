@@ -98,6 +98,6 @@ end
 #cache(file, m::Model, data) = JLD2.jldopen(file, "r") do io
 #end
 
-include("ModelMod/ModelMacro.jl")
+include("ModelMacro.jl")
 
 end # module ModelMod
