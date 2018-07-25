@@ -1,5 +1,7 @@
 module Tests
 
+import JLD2
+
 using Base.Test
 using Flux
 using ..BetaML_NN
@@ -28,7 +30,7 @@ function run()
         save(file, m1)
         save(file, m3)
 
-        @test_broken load!(file, m2)
+        @test_throws KeyError load!(file, m2) 
 
         rep = Dict("relu"=>relu, "sigmoid"=>σ)
         load!(file, m2, "relu"=>relu)
