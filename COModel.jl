@@ -10,7 +10,7 @@ using BetaML.Data
 using ..ModelMod, ..Layers
 using Loppy.Util: batch
 
-regularize(x) = reshape(x/MAX_E, GRIDSIZE, 1, :)
+regularize(x) = reshape(x/MAX_E, GRIDSIZE..., 1, :)
 
 @model CO(activ=>activ_name, opt=>opt_name, η, N, ϵ, λ; cutgrad=false) =
     Chain(regularize, CellPred(), @Concat(identity..., PointPred(activ, N, cutgrad=cutgrad)))
@@ -32,11 +32,9 @@ function loss(m::Model{<:CO}, events, points)
         pred_point = pred_rel_points[:, i] + cellpoint(pred_cell)
 
         goodlog(pred_prob) - badlog(pred_prob) + sum(badlog, pred_dist) #=
-     =# + λ*(pred_point - point).^2
+     =# + λ*sum((pred_point - point).^2)
     end
 end
-
-const BATCHSIZE=1000
 
 function make_info_f(f, numbatches, model, events, points)
     batch = 1
@@ -61,21 +59,23 @@ function relay_info(numbatches, batch, model, events, points)
     plotpoint!(pred_point, color=:red)
 end
 
+const BATCHSIZE=1000
+
 function ModelMod.train(file, model::Model{<:CO}, events, points; load=true)
-    load && load!(file, model)
+    load ? load!(file, model) : save(file, model)
     batches = zip(batch(events, BATCHSIZE), batch(points, BATCHSIZE)) |> collect
 
-    save_t = throttle(12) do; save(file, model) end
+    save_t = Flux.throttle(12) do; save(file, model) end
     relay_info_t = begin
-        f = make_relay_info(length(batches), model, events, points)
-        throttle(f, 3)
+        f = make_info_f(relay_info, length(batches), model, events, points)
+        Flux.throttle(f, 3)
     end
 
     shuffle!(batches)
 
-    opt = hyparams(model, "opt")(params(model))
+    opt = hyparams(model, "opt")(params(model), hyparams(model, "η"))
     try
-        Flux.Optimise.train!(loss(model), batches, opt, cb=(save_t, relay_info_t))
+        Flux.Optimise.train!(loss(model), batches, opt, cb=[save_t, relay_info_t])
     catch ex
         ex isa InterruptException ? interrupt() : rethrow()
     finally

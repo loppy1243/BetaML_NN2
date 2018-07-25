@@ -59,10 +59,28 @@ loss(m::Model) = (args...,) -> loss(m, args...)
 
 train(args...) = throw(MethodError(train, (args...)))
 
-save(file, m::Model) = JLD2.jldopen(file, "a") do io
+save(file, m::Model) = _save_trunc(file, m)
+#save(file, m::Model; append=false) = append ? _save_append(file, m) : _save_trunc(file, m)
+#function _save_append(file, m::Model)
+#    mname = modelname(m)
+#    mid_str = string(modelid(m))
+#
+#    tmp = tempname()
+#    mv(file, tmp)
+#    io_tmp = JLD2.jldopen(file, "a")
+#    io_new = JLD2.jldopen(file, "w")
+#
+#    if haskey(io_tmp, mname)
+#    else
+#        mgrp = io_tmp[
+#    end
+#end
+_save_trunc(file, m::Model) = JLD2.jldopen(file, "w") do io
     mname = modelname(m)
-    grp = JLD2.Group(haskey(io, mname) ? io[mname] : JLD2.Group(io, mname),
-                     string(modelid(m)))
+    mid_str = string(modelid(m))
+
+    grp = JLD2.Group(JLD2.Group(io, mname), mid_str)
+
     grp["params"] = map(data, m.params)
     grp["hyparams"] = map(m.hyparams) do x
         x[1] => (x[2] isa Placeholder ? x[2].name : x[2])

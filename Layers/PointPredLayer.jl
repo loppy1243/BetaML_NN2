@@ -23,20 +23,20 @@ end
 
 Flux.params(p::PointPred) = Flux.params(p.denselayer)
 
-(p::PointPred)(x) = p.cutgrad ? _pointpred(p, data(x[1])) : _pointpred(p, x[x])
-_pointpred(p::PointPred, x) = @> x begin
-    recenter(x[2])
+(p::PointPred)(x) = p.cutgrad ? _pointpred(p, data(x[1]), data(x[2])) : _pointpred(p, x[1], x[2])
+_pointpred(p::PointPred, x, y) = @> x begin
+    recenter(y)
     p.activ.()
-    vec
+    reshape(NODES, :)
     p.denselayer
     (*).(SCALE)
 end
 
 function recenter(dists, cells)
-    ret = zeros(eltype(dists), (2GRIDSIZE .+ 1)..., size(dists, 3))
+    ret = zeros(eltype(dists), (2(GRIDSIZE.-1) .+ 1)..., size(dists, 3))
 
     for k = 1:GRIDSIZE[1], l = 1:GRIDSIZE[2], i in indices(dists, 3)
-        ixs = [k, l] - cells[:, i] + GRIDSIZE .+ 1
+        ixs = [k, l] - cells[:, i] + GRIDSIZE
 
         ret[ixs..., i] = dists[k, l, i]
     end
