@@ -22,14 +22,17 @@ function run()
 
     @testset "Saving/Loading" begin
         mkpath("test")
-        save("test/models.jld2", m1)
-        save("test/models.jld2", m3)
+        file = "test/models.jld2"
+        rm(file, force=true)
 
-        @test_broken load!("test/models.jld2", m2)
+        save(file, m1)
+        save(file, m3)
+
+        @test_broken load!(file, m2)
 
         rep = Dict("relu"=>relu, "sigmoid"=>σ)
-        load!("test/models.jld2", m2, "relu"=>relu)
-        load!("test/models.jld2", m5, rep, id=modelid(m3))
+        load!(file, m2, "relu"=>relu)
+        load!(file, m5, rep, id=modelid(m3))
 
         @test m1 == m2 && isequal(hyparams(m1), hyparams(m2))
         @test m5 == m3 && isequal(hyparams(m5), hyparams(m3))
