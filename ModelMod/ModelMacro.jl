@@ -116,7 +116,7 @@ macro model(expr::Expr)
             func = $(esc(body))
             params = Flux.params(func)
             hyparams = Dict(zip(($hyparam_names...), ($(hyparam_syms...),)))
-            real_id = id === nothing ? hash(T) + hash(hyparams) : convert(UInt, id)
+            real_id = id === nothing ? hash(string(T)) + hash(hyparams) : convert(UInt, id)
 
             ModelMod.Model{$name, typeof(func)}(real_id, func, params, hyparams)
         end
