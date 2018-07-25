@@ -2,6 +2,7 @@
 export CO
 
 using Flux
+using Plots
 
 import ..ModelMod: loss, predict, train
 
@@ -37,14 +38,49 @@ end
 
 const BATCHSIZE=1000
 
+function make_info_f(f, numbatches, model, events, points)
+    batch = 1
+    () -> (relay_info(numbatches, batch, model, events, points); batch += 1)
+end
+
+function relay_info(numbatches, batch, model, events, points)
+    numevents = size(events, 3)
+
+    (pred_dists, _, pred_points) = predict(model, events)
+    i = rand(indices(events, 3))
+
+    point = points[:, i]
+    pred_dist = pred_dists[:, :, i]
+    pred_point = pred_points[:, i]
+
+    lossval = loss(model, events, points) |> data
+    println("$(lpad(batch, ndigits(numbatches), 0))/$numbatches: ",
+            "Event $(lpad(i, numevents, 0)) | Loss = $(signif(lossval, 4))")
+    spy(pred_dist)
+    plotpoint!(point, color=:green)
+    plotpoint!(pred_point, color=:red)
+end
+
 function ModelMod.train(file, model::Model{<:CO}, events, points; load=true)
     load && load!(file, model)
     batches = zip(batch(events, BATCHSIZE), batch(points, BATCHSIZE)) |> collect
 
+    save_t = throttle(12) do; save(file, model) end
+    relay_info_t = begin
+        f = make_relay_info(length(batches), model, events, points)
+        throttle(f, 3)
+    end
+
     shuffle!(batches)
 
     opt = hyparams(model, "opt")(params(model))
-    Flux.Optimise.train!(loss(model), batches, opt)
+    try
+        Flux.Optimise.train!(loss(model), batches, opt, cb=(save_t, relay_info_t))
+    catch ex
+        ex isa InterruptException ? interrupt() : rethrow()
+    finally
+        save(file, model)
+    end
 end
 
 end # module COModel
