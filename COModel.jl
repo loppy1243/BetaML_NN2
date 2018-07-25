@@ -7,10 +7,11 @@ import ..ModelMod: loss, predict, train
 
 using BetaML.Data
 using ..ModelMod, ..Layers
+using Loppy.Util: batch
 
 regularize(x) = reshape(x/MAX_E, GRIDSIZE, 1, :)
 
-@model CO(activ=>activ_name, N, ϵ, λ; cutgrad=false) =
+@model CO(activ=>activ_name, opt=>opt_name, η, N, ϵ, λ; cutgrad=false) =
     Chain(regularize, CellPred(), @Concat(identity..., PointPred(activ, N, cutgrad=cutgrad)))
 
 function loss(m::Model{<:CO}, events, points)
@@ -34,8 +35,16 @@ function loss(m::Model{<:CO}, events, points)
     end
 end
 
-function ModelMod.train(model::Model{<:CO}, file, events, points; load=true)
-    model = !load && ModelMod.load(model, file)
+const BATCHSIZE=1000
+
+function ModelMod.train(file, model::Model{<:CO}, events, points; load=true)
+    load && load!(file, model)
+    batches = zip(batch(events, BATCHSIZE), batch(points, BATCHSIZE)) |> collect
+
+    shuffle!(batches)
+
+    opt = hyparams(model, "opt")(params(model))
+    Flux.Optimise.train!(loss(model), batches, opt)
 end
 
 end # module COModel
