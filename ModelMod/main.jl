@@ -12,7 +12,7 @@ using Flux.Tracker: istracked, data
 abstract type ModelType end
 
 struct Model{T<:ModelType, F}
-    id::UInt
+    id::Ref{UInt}
     func::F
     params::Vector
     hyparams::Dict{String}
@@ -37,7 +37,7 @@ Base.hash(x::Placeholder, h::UInt) = Base.hash(x.name, h)
 Base.hash(x::PlaceholderName, h::UInt) = Base.hash(x.val, h)
 
 modelname(m::Model{T}) where T<:ModelType = string(T)
-modelid(m::Model) = m.id
+modelid(m::Model) = m.id[]
 
 Flux.params(m::Model) = m.params
 
@@ -92,6 +92,7 @@ function load!(file, m::Model, replace=Dict{String, Any}(); id=modelid(m))
         end
     end
 
+    m.id[] = id
     m
 end
 
